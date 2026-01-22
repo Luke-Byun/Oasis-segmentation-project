@@ -38,11 +38,11 @@
 
 ## 💻 기술 스택 (Tech Stack)
 
-* **Language:** Python [버전]
-* **Deep Learning:** [PyTorch / TensorFlow], [nnU-Net 등 사용 모델]
-* **Web Framework:** [Streamlit / Gradio]
-* **Data Processing:** [Pandas, NumPy, Nibabel 등]
-* **Visualization:** [Matplotlib, Seaborn 등]
+* **Language:** Python
+* **Deep Learning:** [PyTorch / TensorFlow], [nnU-Net]
+* **Web Framework:** [Gradio]
+* **Data Processing:** [Pandas, NumPy, Nibabel,,,]
+* **Visualization:** [Matplotlib, Seaborn]
 
 ---
 
