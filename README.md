@@ -1,4 +1,4 @@
-# 🧠 [프로젝트 이름 입력] (Neuro-Degenerative Disease Analysis Project)
+# 🧠 Neuro-Degenerative Disease Analysis Project
 
 > **3D MRI 기반 전뇌 구조 세그멘테이션 및 용적 정량화를 통한 퇴행성 뇌질환 위험도 분석 보조 시스템**
 
