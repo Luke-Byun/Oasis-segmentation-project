@@ -11,7 +11,10 @@ import joblib
 import nibabel as nib
 import numpy as np
 import plotly.graph_objects as go
+from dotenv import load_dotenv
 from skimage import measure
+
+load_dotenv()
 
 # Runtime paths are configurable so the app works outside Google Colab.
 RUNTIME_DIR = Path(

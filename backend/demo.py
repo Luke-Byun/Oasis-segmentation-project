@@ -1,5 +1,6 @@
 # app/test_with_line.py
 import json
+from pathlib import Path
 from typing import Dict, Any, Tuple
 
 from rag.retriever import load_docs, TfidfRetriever
@@ -7,7 +8,9 @@ from rag.pipeline import generate_explanation
 from rag.llm_client import OpenAIClient, OpenAIConfig
 
 from dotenv import load_dotenv
+
 load_dotenv() # .env에서 OPENAI_API_KEY 로드
+DOCS_DIR = Path(__file__).resolve().parent / "docs"
 
 LABEL_NAMES = {
     1:"L_Cerebral_WM", 2:"L_LatVent", 3:"L_InfLatVent", 4:"L_Cb_WM", 5:"L_Cb_Ctx",
@@ -197,7 +200,7 @@ def main():
     llm_input = ratios_to_llm_input(subject_id, ratios, prediction, probability)
 
     # 3) RAG 준비
-    docs = load_docs("./docs")
+    docs = load_docs(str(DOCS_DIR))
     retriever = TfidfRetriever.build(docs)
 
     # 4) OpenAI LLM 준비

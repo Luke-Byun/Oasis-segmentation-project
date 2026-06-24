@@ -4,5 +4,6 @@ nibabel>=5.1
 nnunetv2>=2.1
 numpy>=1.24
 plotly>=5.18
+python-dotenv>=1.0
 scikit-image>=0.22
 scikit-learn>=1.3

@@ -1,209 +1,187 @@
 # OASIS Brain Segmentation Project
 
-OASIS 뇌 MRI를 대상으로 뇌 구조를 segmentation하고, 분할 결과에서 얻은 ROI별 상대 용적 비율을 이용해 인지 저하 관련 분류와 결과 해석 흐름을 실험한 프로젝트입니다.
+[![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+[![nnU-Net](https://img.shields.io/badge/nnU--Net-v2-6A5ACD)](https://github.com/MIC-DKFZ/nnUNet)
+[![Status](https://img.shields.io/badge/status-research%20prototype-orange)](#project-status)
 
-이 저장소는 크게 세 부분으로 구성됩니다.
+OASIS 뇌 MRI에서 29개 뇌 구조를 분할하고, ROI별 voxel ratio를 이용한
+인지 저하 관련 분류와 결과 설명 흐름을 탐색한 연구 프로젝트입니다.
 
-1. `U-Net`, `DeepLab`, `Light3DHS`, `nnU-Net` 기반 segmentation 실험 노트북
-2. nnU-Net 예측 마스크에서 29개 뇌 구조의 voxel ratio를 계산해 `CN`과 `Disease(AD + MCI)`를 구분하는 분석 흐름
-3. segmentation 결과를 3D로 확인하는 Gradio UI와 ROI 지표를 설명하는 RAG 기반 backend prototype
+The repository combines segmentation experiments, an nnU-Net inference and 3D
+visualization app, and a retrieval-augmented explanation prototype.
 
-> 이 프로젝트의 분류 결과와 설명 문구는 연구 및 보조 목적입니다. 임상 진단이나 치료 결정을 대체하지 않습니다.
+> [!CAUTION]
+> 이 프로젝트의 출력은 연구 및 교육 목적입니다. 임상 진단, 예후 판단 또는
+> 치료 결정을 대신하지 않습니다.
 
-## Project Flow
+## Highlights
 
-```text
-OASIS MRI
-   |
-   v
-Segmentation model experiments
-U-Net / DeepLab / Light3DHS / nnU-Net
-   |
-   v
-29 ROI segmentation mask
-   |
-   +--> 3D ROI visualization with Gradio
-   |
-   v
-ROI voxel ratio extraction
-   |
-   +--> CN vs Disease classification
-   |
-   v
-RAG explanation for dashboard metrics and ROI context
+- U-Net, DeepLab, Light3DHS, and nnU-Net experiment notebooks
+- 29-ROI segmentation and relative voxel-ratio analysis
+- CN versus `Disease (AD + MCI)` downstream classification prototype
+- Gradio and Plotly-based 3D ROI visualization
+- Local-document RAG prototype for metric, QC, and ROI explanations
+
+## Project Status
+
+This repository is a research prototype, not a ready-to-deploy clinical product.
+
+| Component | Included | Additional requirement |
+| --- | --- | --- |
+| Experiment notebooks | Yes | Notebook-specific packages and OASIS/MSD data |
+| nnU-Net helper scripts | Yes | Prepared dataset and nnU-Net environment |
+| Gradio application | Yes | Trained nnU-Net checkpoint and optional RF model |
+| RAG explanation backend | Yes | `OPENAI_API_KEY` |
+| MRI data and labels | No | Obtain and prepare them separately |
+| Trained model artifacts | No | Supply local `.pth`/`.pt` and `.joblib` files |
+
+## Pipeline
+
+```mermaid
+flowchart LR
+    A[OASIS MRI] --> B[Segmentation experiments]
+    B --> C[29-ROI mask]
+    C --> D[3D visualization]
+    C --> E[ROI voxel ratios]
+    E --> F[CN vs Disease classifier]
+    E --> G[RAG explanation]
+    F --> H[Research dashboard output]
+    G --> H
 ```
 
-## Main Scope
-
-### Segmentation
-
-- OASIS subcortical brain structures are represented with 29 ROI labels.
-- The notebooks compare or prototype several medical image segmentation approaches.
-- The nnU-Net workflow remaps label ids to a continuous `1` to `29` label space before training.
-
-### Volumetric Features
-
-The primary downstream feature is a voxel-count ratio.
+The downstream feature used by the OASIS analysis is:
 
 ```text
-ROI ratio = ROI voxel count / all non-background brain voxels
+ROI ratio = ROI voxel count / all non-background segmentation voxels
 ```
 
-- `Total_Voxels` is computed from voxels where the segmentation label is greater than `0`.
-- The backend explanation module treats this value as a relative ratio, not an absolute `mm^3` volume.
-- Tissue-like ROIs and fluid-space ROIs such as ventricles or CSF should not be interpreted in the same way.
+This is a relative ratio, not an absolute volume in `mm³`. See
+[Architecture and data flow](docs/ARCHITECTURE.md) for details.
 
-### Classification and Explanation
-
-- The analysis flow groups `AD` and `MCI` into `Disease` for a `CN` vs `Disease` binary task.
-- The Gradio prototype uses selected ROI ratios as Random Forest inputs after nnU-Net prediction.
-- The backend prototype retrieves local markdown documentation and asks an LLM to explain model output, metric definitions, QC signals, and representative ROI findings.
-
-## Repository Structure
+## Repository Layout
 
 ```text
 .
-|-- apps/
-|   |-- gradio_app.py                 # Inference, diagnosis, and 3D visualization UI
-|   `-- requirements.txt
-|-- backend/
-|   |-- app/explain.py                # ROI ratio -> explanation input adapter
-|   |-- rag/                          # Retriever, prompts, LLM client, explanation pipeline
-|   |-- docs/                         # Model card, metric guide, ROI glossary, dashboard guide
-|   |-- test.py                       # RAG explanation smoke script
-|   `-- requirements.txt
+|-- apps/                              # Gradio inference and visualization app
+|-- backend/                           # RAG retrieval and explanation prototype
+|-- docs/                              # Architecture and project documentation
 |-- notebooks/
-|   |-- oasis/                        # OASIS model and analysis experiments
-|   |-- reference/                    # Decathlon reference experiment
-|   `-- colab/                        # Preserved Colab training notes
-`-- nnUNet-segmentation-project/      # nnU-Net/MSD helper scripts and volume calculator
+|   |-- oasis/                         # OASIS experiments and analysis
+|   |-- reference/                     # Decathlon reference experiment
+|   `-- colab/                         # Preserved Colab training notes
+`-- nnUNet-segmentation-project/       # MSD/nnU-Net helper project
 ```
 
-`nnUNet-segmentation-project/` contains helper scripts that were written around an MSD Hippocampus nnU-Net workflow. The OASIS training path is documented under `notebooks/`.
+## Quick Start
 
-## Data and Artifacts
-
-Large research assets are not stored in this repository. To reproduce the full pipeline you need the corresponding local or Colab assets.
-
-- OASIS MRI files and segmentation labels in NIfTI format
-- nnU-Net raw, preprocessed, and result directories
-- Trained nnU-Net checkpoints for inference
-- The Random Forest artifact expected by the Gradio prototype, such as `oasis_rf_model.joblib`
-- An OpenAI API key only when running the LLM/RAG explanation prototype
-
-Several experiment files use Google Colab paths such as `/content/...` and Google Drive paths. Update those paths for your runtime before training or inference.
-
-## Setup
-
-Create a Python environment first.
+### 1. Clone and create an environment
 
 ```bash
+git clone https://github.com/Luke-Byun/Oasis-segmentation-project.git
+cd Oasis-segmentation-project
 python -m venv .venv
+```
+
+Activate it on macOS/Linux:
+
+```bash
 source .venv/bin/activate
-python -m pip install --upgrade pip
 ```
 
-For nnU-Net and medical imaging helpers:
+Or on Windows PowerShell:
 
-```bash
-pip install -r nnUNet-segmentation-project/requirements.txt
+```powershell
+.venv\Scripts\Activate.ps1
 ```
 
-For the RAG explanation backend:
+### 2. Choose a component
 
-```bash
-pip install -r backend/requirements.txt
-```
-
-For the Gradio research app:
-
-```bash
-pip install -r apps/requirements.txt
-```
-
-The notebooks may require additional packages depending on the selected experiment cell and Colab runtime.
-
-## nnU-Net Workflow
-
-The OASIS training notes are in `notebooks/colab/nnunet_training_cells.md` and the experiment notebooks. They show the main steps below.
-
-1. Set nnU-Net environment directories.
-
-```bash
-export nnUNet_raw=/path/to/nnUNet_raw
-export nnUNet_preprocessed=/path/to/nnUNet_preprocessed
-export nnUNet_results=/path/to/nnUNet_results
-```
-
-2. Prepare an OASIS nnU-Net dataset folder such as `Dataset001_BrainSeg` or `Dataset001_OASIS_Subcort`.
-3. Remap segmentation labels into the continuous label ids used by the OASIS workflow.
-4. Plan, preprocess, train, and run inference.
-
-```bash
-nnUNetv2_plan_and_preprocess -d 1 --verify_dataset_integrity
-nnUNetv2_train 1 3d_fullres 0
-nnUNetv2_predict -i /path/to/imagesTs -o /path/to/predictions -d 1 -c 3d_fullres -f 0
-```
-
-nnU-Net input image names must follow its channel naming rule, for example `sample_0000.nii.gz`.
-
-## Gradio Prototype
-
-`apps/gradio_app.py` provides a research UI that:
-
-- accepts a `.nii.gz` MRI file
-- runs `nnUNetv2_predict`
-- renders selected ROI surfaces in 3D with Plotly
-- displays total segmented voxel count and a classification result when the Random Forest artifact is available
-
-Configure runtime paths and model settings with environment variables as needed.
-
-- `nnUNet_raw`, `nnUNet_preprocessed`, `nnUNet_results`
-- `OASIS_RF_MODEL`
-- `OASIS_RUNTIME_DIR`
-- `OASIS_NNUNET_DATASET_ID`, `OASIS_NNUNET_CONFIGURATION`, `OASIS_NNUNET_FOLD`
-- `OASIS_NNUNET_CHECKPOINT`
-
-Then install its runtime dependencies and run:
+For the Gradio application:
 
 ```bash
 pip install -r apps/requirements.txt
 python apps/gradio_app.py
 ```
 
-## RAG Explanation Prototype
+Copy `.env.example` to `.env` and update the paths before inference. The app
+cannot run inference until a compatible nnU-Net checkpoint is available.
 
-The backend prototype uses local documents in `backend/docs/` as retrieval context. It explains dashboard metrics and model output without sending the ground-truth class label to the LLM input in the included test flow.
+For the RAG explanation demo:
 
 ```bash
-cd backend
-export OPENAI_API_KEY=your_api_key
-python test.py
+pip install -r backend/requirements.txt
+python backend/demo.py
 ```
 
-Relevant docs:
+Set `OPENAI_API_KEY` in `.env` before running the demo.
 
-- `backend/docs/model_card.md`
-- `backend/docs/metric_definition.md`
-- `backend/docs/roi_glossary.md`
-- `backend/docs/dashboard_guide.md`
+For the standalone nnU-Net/MSD helpers:
 
-## Experiment Files
+```bash
+pip install -r nnUNet-segmentation-project/requirements.txt
+```
 
-| File | Purpose |
+Then follow [the helper project guide](nnUNet-segmentation-project/README.md).
+
+## Configuration
+
+| Variable | Purpose | Default |
+| --- | --- | --- |
+| `nnUNet_raw` | nnU-Net raw dataset directory | Runtime directory |
+| `nnUNet_preprocessed` | Preprocessed dataset directory | Runtime directory |
+| `nnUNet_results` | Trained nnU-Net results directory | Runtime directory |
+| `OASIS_RF_MODEL` | Random Forest artifact path | `artifacts/oasis_rf_model.joblib` |
+| `OASIS_RUNTIME_DIR` | Temporary app input/output root | OS temporary directory |
+| `OASIS_NNUNET_DATASET_ID` | nnU-Net dataset ID | `1` |
+| `OASIS_NNUNET_CONFIGURATION` | nnU-Net configuration | `3d_fullres` |
+| `OASIS_NNUNET_FOLD` | Inference fold | `0` |
+| `OASIS_NNUNET_CHECKPOINT` | Checkpoint filename | `checkpoint_best.pth` |
+| `GRADIO_SHARE` | Enable a public Gradio share URL | `false` |
+| `OPENAI_API_KEY` | API key for the RAG demo | None |
+
+## Data and Model Artifacts
+
+Large or sensitive research assets are intentionally excluded from Git:
+
+- OASIS MRI scans and segmentation labels (`.nii`, `.nii.gz`)
+- nnU-Net raw, preprocessed, and results directories
+- trained checkpoints (`.pt`, `.pth`)
+- downstream classifier artifacts (`.joblib`)
+- generated predictions and outputs
+
+Do not commit participant data, credentials, or derived files that may contain
+sensitive information. The user is responsible for complying with the OASIS
+data-use terms and their institution's research-data policies.
+
+## Experiments
+
+| Notebook | Purpose |
 | --- | --- |
-| `notebooks/oasis/unet.ipynb` | U-Net segmentation experiments |
-| `notebooks/oasis/deeplab.ipynb` | DeepLab segmentation experiments |
-| `notebooks/oasis/light3dhs.ipynb` | Light3DHS segmentation experiments |
-| `notebooks/oasis/nnunet.ipynb` | nnU-Net-style 3D experiment and evaluation cells |
-| `notebooks/oasis/segmentation_analysis.ipynb` | OASIS sampling, inference, ROI result extraction |
-| `notebooks/oasis/ml_analysis.ipynb` | ROI-derived machine learning analysis |
-| `notebooks/reference/decathlon_unet.ipynb` | Hippocampus/Decathlon U-Net reference experiment |
+| [`unet.ipynb`](notebooks/oasis/unet.ipynb) | U-Net segmentation experiment |
+| [`deeplab.ipynb`](notebooks/oasis/deeplab.ipynb) | DeepLab segmentation experiment |
+| [`light3dhs.ipynb`](notebooks/oasis/light3dhs.ipynb) | Light3DHS experiment |
+| [`nnunet.ipynb`](notebooks/oasis/nnunet.ipynb) | nnU-Net-style experiment and evaluation |
+| [`segmentation_analysis.ipynb`](notebooks/oasis/segmentation_analysis.ipynb) | Sampling, inference, and ROI extraction |
+| [`ml_analysis.ipynb`](notebooks/oasis/ml_analysis.ipynb) | ROI-derived downstream analysis |
+| [`decathlon_unet.ipynb`](notebooks/reference/decathlon_unet.ipynb) | MSD/hippocampus reference experiment |
 
-## Notes and Limitations
+Some notebook cells still contain Google Colab or Google Drive paths. Treat
+them as experiment records and adapt the paths before rerunning them.
 
-- The repository currently contains research notebooks and prototypes rather than a single packaged training CLI.
-- Some experiment notebook cells and the preserved training notes remain Colab-oriented.
-- Trained checkpoints, OASIS data, and the Random Forest model artifact are required for end-to-end inference but are not included here.
-- ROI ratios are sensitive to segmentation quality, preprocessing differences, and dataset distribution shift.
-- The `Disease` class merges `AD` and `MCI`; it is not an AD/MCI differential diagnosis model.
+## Limitations
+
+- The repository does not include the data or trained models needed for end-to-end inference.
+- Notebook environments are not fully pinned and may require additional packages.
+- The `Disease` class combines AD and MCI; it is not an AD/MCI differential diagnosis model.
+- ROI ratios depend on segmentation quality, preprocessing, and dataset distribution.
+- Generated explanations can be incomplete or incorrect and require expert review.
+
+## Contributing
+
+Small fixes, documentation improvements, and reproducibility work are welcome.
+Read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request.
+
+## License
+
+This repository currently has no license file. Unless the owner adds one,
+copyright law applies and reuse permission is not automatically granted.
