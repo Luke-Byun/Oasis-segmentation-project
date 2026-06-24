@@ -263,3 +263,17 @@ $RECYCLE.BIN/
 *.lnk
 
 # End of https://www.toptal.com/developers/gitignore/api/macos,windows,visualstudiocode,python,jupyternotebooks
+
+# Local research data and generated artifacts
+artifacts/
+data/
+outputs/
+predictions/
+nnUNet_raw/
+nnUNet_preprocessed/
+nnUNet_results/
+*.nii
+*.nii.gz
+*.joblib
+*.pth
+*.pt

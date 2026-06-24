@@ -1,4 +1,10 @@
-#nnUNet 코드
+# nnU-Net Colab training cells
+
+This file preserves the original Google Colab-oriented training commands. It is
+reference material rather than a directly executable Python module.
+
+```python
+# nnUNet 코드
 #내 구글 드라이브 로드 
 from google.colab import drive
 drive.mount('/content/drive')
@@ -93,3 +99,4 @@ remap_labels()
 
 # 2. 3D Full Resolution 모델 학습 시작 (Fold 0)
 !nnUNetv2_train 1 3d_fullres 0
+```

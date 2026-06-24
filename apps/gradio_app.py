@@ -1,15 +1,30 @@
-#nnUNet으로 segmentation하고 뇌 용적량을 계산하여 머신러닝으로 정상/비정상 여부를 출력해주는 그라디오
-import os, shutil, nibabel as nib, numpy as np
+"""OASIS MRI segmentation and research visualization app."""
+
+import os
+import shutil
+import subprocess
+import tempfile
+from pathlib import Path
+
+import gradio as gr
+import joblib
+import nibabel as nib
+import numpy as np
 import plotly.graph_objects as go
 from skimage import measure
-import gradio as gr
-import subprocess
-import joblib
 
-# 1. 환경 변수 설정
-os.environ['nnUNet_raw'] = "/content/nnUNet_raw"
-os.environ['nnUNet_preprocessed'] = "/content/nnUNet_preprocessed"
-os.environ['nnUNet_results'] = "/content/nnUNet_results"
+# Runtime paths are configurable so the app works outside Google Colab.
+RUNTIME_DIR = Path(
+    os.getenv("OASIS_RUNTIME_DIR", str(Path(tempfile.gettempdir()) / "oasis-segmentation"))
+)
+os.environ.setdefault("nnUNet_raw", str(RUNTIME_DIR / "nnUNet_raw"))
+os.environ.setdefault("nnUNet_preprocessed", str(RUNTIME_DIR / "nnUNet_preprocessed"))
+os.environ.setdefault("nnUNet_results", str(RUNTIME_DIR / "nnUNet_results"))
+
+DATASET_ID = os.getenv("OASIS_NNUNET_DATASET_ID", "1")
+CONFIGURATION = os.getenv("OASIS_NNUNET_CONFIGURATION", "3d_fullres")
+FOLD = os.getenv("OASIS_NNUNET_FOLD", "0")
+CHECKPOINT = os.getenv("OASIS_NNUNET_CHECKPOINT", "checkpoint_best.pth")
 
 # 2. 클래스 정의 (전체 29개)
 CLASS_NAMES = [
@@ -31,8 +46,8 @@ RF_FEATURES = [
 ]
 
 # 모델 로드
-MODEL_PATH = "/content/oasis_rf_model.joblib"
-rf_model = joblib.load(MODEL_PATH) if os.path.exists(MODEL_PATH) else None
+MODEL_PATH = Path(os.getenv("OASIS_RF_MODEL", "artifacts/oasis_rf_model.joblib"))
+rf_model = joblib.load(MODEL_PATH) if MODEL_PATH.exists() else None
 
 # 데이터 캐시
 cache = {"orig": None, "pred": None, "total_v": 0, "counts": {}, "diagnosis": ""}
@@ -48,23 +63,34 @@ def run_analysis(mri_file):
     if mri_file is None:
         return "파일을 업로드하세요.", go.Figure(), "데이터 없음", "진단 대기 중"
     
-    in_dir, out_dir = '/content/gr_in', '/content/gr_out'
-    for d in [in_dir, out_dir]:
-        if os.path.exists(d): shutil.rmtree(d)
-        os.makedirs(d, exist_ok=True)
+    in_dir, out_dir = RUNTIME_DIR / "input", RUNTIME_DIR / "output"
+    for directory in (in_dir, out_dir):
+        if directory.exists():
+            shutil.rmtree(directory)
+        directory.mkdir(parents=True, exist_ok=True)
 
-    input_path = os.path.join(in_dir, "sample_0000.nii.gz")
-    shutil.copy(mri_file.name, input_path)
+    input_path = in_dir / "sample_0000.nii.gz"
+    source_path = Path(getattr(mri_file, "name", mri_file))
+    shutil.copy2(source_path, input_path)
 
     # nnU-Net 예측 실행
-    cmd = f"nnUNetv2_predict -i {in_dir} -o {out_dir} -d 1 -c 3d_fullres -f 0 -chk checkpoint_best.pth --disable_progress_bar"
+    cmd = [
+        "nnUNetv2_predict",
+        "-i", str(in_dir),
+        "-o", str(out_dir),
+        "-d", DATASET_ID,
+        "-c", CONFIGURATION,
+        "-f", FOLD,
+        "-chk", CHECKPOINT,
+        "--disable_progress_bar",
+    ]
     try:
-        subprocess.run(cmd, shell=True, check=True)
-    except Exception as e:
-        return f"분석 에러: {str(e)}", go.Figure(), "에러", "에러"
+        subprocess.run(cmd, check=True)
+    except (OSError, subprocess.CalledProcessError) as exc:
+        return f"분석 에러: {exc}", go.Figure(), "에러", "에러"
 
     # 결과 로드
-    res_path = os.path.join(out_dir, "sample.nii.gz")
+    res_path = out_dir / "sample.nii.gz"
     cache["orig"] = nib.load(input_path).get_fdata()
     pred_data = nib.load(res_path).get_fdata()
     cache["pred"] = pred_data
@@ -131,8 +157,10 @@ def update_viz(selected_names):
     return fig, report
 
 # --- Gradio UI ---
-try: gr.close_all()
-except: pass
+try:
+    gr.close_all()
+except AttributeError:
+    pass
 
 with gr.Blocks(theme=gr.themes.Soft()) as demo:
     gr.Markdown("# 🧠 Brain AI Segmentation & Diagnosis System")
@@ -154,5 +182,11 @@ with gr.Blocks(theme=gr.themes.Soft()) as demo:
     btn_run.click(fn=run_analysis, inputs=mri_input, outputs=[status_txt, plot_view, vol_result_display, diag_output])
     class_select.change(fn=update_viz, inputs=class_select, outputs=[plot_view, vol_result_display])
 
-# Queue 적용으로 RuntimeError 방지
-demo.queue().launch(share=True, debug=True)
+def main():
+    """Launch the local Gradio interface."""
+    share = os.getenv("GRADIO_SHARE", "false").lower() in {"1", "true", "yes"}
+    demo.queue().launch(share=share)
+
+
+if __name__ == "__main__":
+    main()
